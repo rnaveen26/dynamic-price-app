@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
-import { updateProfile, signOut } from "firebase/auth";
+import { updateProfile, signOut, reload } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import "../styles/Profile.css";
 
 const Profile = () => {
   const [user, setUser] = useState(null);
@@ -12,27 +13,38 @@ const Profile = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setLoading(true)
-    console.log("Auth ... ", auth)
-    if (auth.currentUser) {
-      setUser(auth.currentUser);
-      setName(auth.currentUser.displayName || "");
-      setPhotoURL(auth.currentUser.photoURL || "");
-    }
-    setLoading(false)
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setName(currentUser.displayName || "");
+        setPhotoURL(currentUser.photoURL || "");
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+  
+    return () => unsubscribe();
   }, []);
 
   const handleUpdateProfile = async () => {
     if (user) {
       try {
         await updateProfile(user, { displayName: name, photoURL });
-        setUser({ ...user, displayName: name, photoURL });
+  
+        // 🔁 Reload the user to get updated profile info
+        await reload(user);
+  
+        // ✅ Update state with fresh data from Firebase
+        setUser(auth.currentUser);
+  
         alert("Profile updated successfully!");
       } catch (error) {
         alert(error.message);
       }
     }
   };
+  
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -44,7 +56,14 @@ const Profile = () => {
       <h2>User Profile</h2>
       { user && (
          <>
-         <img src={user.photoURL || "default-avatar.png"} alt="Profile" width={100} />
+         <img 
+            src={user.photoURL || "https://via.placeholder.com/100"} 
+            alt="Profile" 
+            width={100} 
+            height={100} 
+            onError={(e) => { e.target.src = "https://via.placeholder.com/100"; }} 
+            style={{ borderRadius: "50%" }} 
+          />
          <p>Email: {user.email}</p>
          <input type="text" placeholder="Update Name" value={name} onChange={(e) => setName(e.target.value)} />
          <input type="text" placeholder="Profile Picture URL" value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} />

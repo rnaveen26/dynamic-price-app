@@ -4,7 +4,9 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   sendPasswordResetEmail, 
-  sendEmailVerification 
+  sendEmailVerification,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -19,21 +21,22 @@ const Auth = () => {
     e.preventDefault();
     try {
       if (isLogin) {
+        // 👇 Add persistence before login
+        await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, password);
         setMessage("Logged in successfully!");
-        navigate("/profile"); // Redirect to Profile page after login
+        navigate("/profile");
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        
-        // Send verification email
+  
         await sendEmailVerification(user);
         setMessage("Account created! Please check your email for verification.");
       }
     } catch (error) {
       setMessage(error.message);
     }
-  };
+  };  
 
   const handleForgotPassword = async () => {
     if (!email) {
